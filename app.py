@@ -20,8 +20,8 @@ if os.path.exists(css_file):
 # ----------------------------------------------------
 # إعداد اتصال Supabase (تأكد من وضع رابط ومفتاح مشروعك الصحيح هنا أو في Streamlit Secrets)
 # ----------------------------------------------------
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://رابط_مشروعك_الجديد.supabase.co")
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "ضع_مفتاح_anon_public_الخاص_بك_هنا")
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://nqyimxfwrwyajycslxdw.supabase.co")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "sb_publishable_quqjRBtb6bF5Yl2gYqQ1Rg_R1bUu0-A")
 
 @st.cache_resource
 def init_supabase() -> Client:
