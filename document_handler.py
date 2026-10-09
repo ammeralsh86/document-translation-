@@ -5,11 +5,11 @@ import fitz  # PyMuPDF لقراءة ملفات PDF
 from translator import DocumentTranslator
 
 class DocumentHandler:
-    def __init__(self, glossary_path="glossary.json"):
+    def __init__(self, glossary_path="glossary.json", direction="en-ar"):
         """
         تهيئة معالج المستندات الشامل (Word, PowerPoint, PDF)
         """
-        self.translator = DocumentTranslator(glossary_path=glossary_path)
+        self.translator = DocumentTranslator(glossary_path=glossary_path, direction=direction)
 
     def translate_document(self, input_path, output_path, target_language="العربية"):
         """
@@ -72,10 +72,6 @@ class DocumentHandler:
         print(f"[✓] تم حفظ ملف الباوربوينت المترجم في: {output_path}")
 
     def _translate_pdf_to_text(self, input_path, output_path, target_language):
-        """
-        ملاحظة: ملفات PDF صعبة التعديل مباشرة بنفس التنسيق تماماً، 
-        لذا نقوم باستخراج النصوص، ترجمتها، وحفظها كملف نصي أو مستخرج منظم.
-        """
         print(f"[i] جاري قراءة واستخراج النصوص من ملف PDF: {input_path}")
         doc = fitz.open(input_path)
         translated_pdf_content = []
@@ -87,12 +83,7 @@ class DocumentHandler:
                 translated_page = self.translator.translate_text(text, target_language=target_language)
                 translated_pdf_content.append(f"--- صفحة {page_num + 1} ---\n{translated_page}\n")
 
-        # حفظ النتيجة في ملف نصي أو مرن
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("\n".join(translated_pdf_content))
             
         print(f"[✓] تم ترجمة محتوى الـ PDF بنجاح وحفظه في: {output_path}")
-
-# للاختبار المباشر
-if __name__ == "__main__":
-    pass
