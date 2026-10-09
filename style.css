@@ -1,0 +1,64 @@
+/* تنسيق عام لخلفية التطبيق وتأثير الجرافيكس ثلاثي الأبعاد */
+.stApp {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    background-size: cover;
+    font-family: 'Cairo', sans-serif;
+    color: #ffffff;
+}
+
+/* تصميم مربعات إدخال ثلاثية الأبعاد وبارزة */
+input[type="text"], input[type="password"], select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(0, 150, 136, 0.5) !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    padding: 12px !important;
+    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(5px);
+}
+
+input[type="text"]:focus, input[type="password"]:focus {
+    border-color: #00ffd5 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 213, 0.5), inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* تصميم الأزرار ثلاثية الأبعاد المزخرفة */
+.stButton > button {
+    background: linear-gradient(145deg, #00897b, #004d40);
+    color: white;
+    border-radius: 12px;
+    padding: 0.6rem 1.2rem;
+    font-weight: bold;
+    border: 1px solid #00ffd5;
+    box-shadow: 0 9px #00332c, 0 15px 20px rgba(0,0,0,0.4);
+    transition: all 0.1s ease;
+    width: 100%;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(145deg, #009688, #00695c);
+    box-shadow: 0 6px #00332c, 0 10px 15px rgba(0,0,0,0.4);
+    transform: translateY(3px);
+}
+
+.stButton > button:active {
+    box-shadow: 0 2px #00332c, 0 5px 5px rgba(0,0,0,0.4);
+    transform: translateY(7px);
+}
+
+/* تنسيق العناوين بزخرفة ثلاثية الأبعاد */
+h1, h2, h3 {
+    color: #00ffd5 !important;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 213, 0.3);
+}
+
+/* تنسيق توقيع المطور في الأسفل */
+.developer-footer {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 14px;
+    color: #b2dfdb;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 15px;
+}
