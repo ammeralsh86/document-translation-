@@ -1,18 +1,28 @@
 import os
 import json
-from openai import OpenAI
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 class DocumentTranslator:
-    def __init__(self, glossary_path="glossary.json"):
+    def __init__(self, glossary_path="glossary.json", direction="en-ar"):
         """
-        تهيئة المترجم وتحميل مفتاح الـ API ومسرد المصطلحات الشامل
+        تهيئة المترجم المحلي (Offline Translator)
+        direction: إما 'en-ar' (من الإنجليزية للعربية) أو 'ar-en' (من العربية للإنجليزية)
         """
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("مفتاح OPENAI_API_KEY غير موجود في متغيرات البيئة.")
-            
-        self.client = OpenAI(api_key=api_key)
         self.glossary = self._load_glossary(glossary_path)
+        
+        # اختيار النموذج المحلي المناسب حسب اتجاه الترجمة
+        if direction == "en-ar":
+            self.model_name = "Helsinki-NLP/opus-mt-en-ar"
+        else:
+            self.model_name = "Helsinki-NLP/opus-mt-ar-en"
+            
+        print(f"[i] جاري تحميل نموذج الترجمة المحلي ({self.model_name})... قد يستغرق ذلك وقتاً في المرة الأولى.")
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+            print("[✓] تم تحميل النموذج المحلي بنجاح وجاهز للعمل بدون إنترنت.")
+        except Exception as e:
+            print(f"[!] خطأ في تحميل النموذج المحلي: {e}")
 
     def _load_glossary(self, path):
         if os.path.exists(path):
@@ -20,45 +30,32 @@ class DocumentTranslator:
                 with open(path, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
-                print(f"تحذير: لم يتم قراءة ملف المسرد بشكل صحيح: {e}")
+                print(f"تحذير: لم يتم قراءة ملف المسرد: {e}")
         return {}
 
     def translate_text(self, text, target_language="العربية"):
         """
-        ترجمة النص مع الالتزام التام بالمصطلحات الطبية، الزراعية، التكنولوجية، وما ينتهي بـ 'لوجيا'
+        ترجمة النص محلياً مع تطبيق مسرد المصطلحات يدوياً
         """
         if not text or not text.strip():
             return text
 
-        # بناء نظام توجيه ذكي ومتخصص يغطي كافة العلوم
-        system_prompt = (
-            f"أنت خبير لغوي ومترجم أكاديمي متخصص في الترجمة العلمية والتقنية والطبية والزراعية بين اللغتين العربية والانجليزية.\n"
-            f"قواعد الترجمة الصارمة:\n"
-            f"1. حافظ على دقة المصطلحات العلمية (الطبية، الزراعية، والتكنولوجية) بدقة مطلقة وفقاً للمعايير الأكاديمية العالمية.\n"
-            f"2. بالنسبة للمصطلحات التي تنتهي بـ (-ology / لوجيا) وما يشابهها (مثل Cardiology, Biotechnology, Geology)، قم بترجمتها إلى المقابل العلمي المعتمد في اللغة العربية (سواء باللفظ المعرب أو الترجمة المباشرة الدقيقة مثل: علم الأعصاب، الجيولوجيا، التقنية الحيوية).\n"
-            f"3. حافظ على التنسيق والهوية الأصلية للمستند تماماً.\n"
-        )
-
-        # دمج مسرد المصطلحات الخاص بالمستخدم
-        if self.glossary:
-            glossary_str = json.dumps(self.glossary, ensure_ascii=False)
-            system_prompt += (
-                f"\nالرجاء الالتزام التام بترجمة هذه المصطلحات الخاصة بالمستند بناءً على هذا المسرد:\n"
-                f"{glossary_str}"
-            )
+        # 1. تطبيق مسرد المصطلحات المخصص أولاً على النص
+        processed_text = text
+        for src_term, tgt_term in self.glossary.items():
+            if target_language == "العربية":
+                processed_text = processed_text.replace(src_term, tgt_term)
+            else:
+                processed_text = processed_text.replace(tgt_term, src_term)
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"ترجم النص التالي إلى {target_language} بدقة متناهية:\n\n{text}"}
-                ],
-                temperature=0.1  # درجة حرارة منخفضة جداً لضمان الدقة العلمية والالتزام بالمصطلحات
-            )
+            # 2. الترجمة عبر النموذج المحلي
+            inputs = self.tokenizer(processed_text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+            translated_tokens = self.model.generate(**inputs, max_length=512, num_beams=4, early_stopping=True)
+            translated_text = self.tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
             
-            return response.choices[0].message.content.strip()
+            return translated_text.strip()
             
         except Exception as e:
-            print(f"حدث خطأ أثناء الاتصال بخدمة الترجمة: {e}")
+            print(f"حدث خطأ أثناء الترجمة المحلية: {e}")
             return text
