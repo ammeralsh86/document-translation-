@@ -2,6 +2,7 @@ import os
 import json
 import streamlit as st
 from document_handler import DocumentHandler
+from supabase import create_client, Client
 
 # إعداد الصفحة وتصميمها
 st.set_page_config(
@@ -16,21 +17,53 @@ if os.path.exists(css_file):
     with open(css_file, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-USERS_DB_FILE = "users_db.json"
+# ----------------------------------------------------
+# إعداد اتصال Supabase (تأكد من وضع رابط ومفتاح مشروعك الصحيح هنا أو في Streamlit Secrets)
+# ----------------------------------------------------
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://رابط_مشروعك_الجديد.supabase.co")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "ضع_مفتاح_anon_public_الخاص_بك_هنا")
 
-def load_users():
-    if os.path.exists(USERS_DB_FILE):
-        try:
-            with open(USERS_DB_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
+@st.cache_resource
+def init_supabase() -> Client:
+    try:
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        return None
 
-def save_users(users):
-    with open(USERS_DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, ensure_ascii=False, indent=4)
+supabase = init_supabase()
 
+# دوال التعامل مع قاعدة بيانات Supabase
+def get_user_from_db(email):
+    if not supabase:
+        return None
+    try:
+        response = supabase.table("users").select("*").eq("email", email).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+    except Exception as e:
+        print(f"خطأ في البحث عن المستخدم: {e}")
+    return None
+
+def save_user_to_db(user_data):
+    if not supabase:
+        return False
+    try:
+        supabase.table("users").insert(user_data).execute()
+        return True
+    except Exception as e:
+        print(f"خطأ في حفظ المستخدم: {e}")
+        return False
+
+def get_all_users():
+    if not supabase:
+        return []
+    try:
+        response = supabase.table("users").select("*").execute()
+        return response.data if response.data else []
+    except Exception as e:
+        return []
+
+# حالة الجلسة
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "current_user" not in st.session_state:
@@ -57,7 +90,6 @@ if not st.session_state.logged_in:
         
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("تسجيل الدخول"):
-            users = load_users()
             # حساب الآدمن الافتراضي
             if login_email == "admin@health.org" and login_pass == "admin123":
                 st.session_state.logged_in = True
@@ -69,14 +101,16 @@ if not st.session_state.logged_in:
                 }
                 st.success("تم تسجيل الدخول بصفتك (آدمن) بنجاح!")
                 st.rerun()
-            elif login_email in users and users[login_email]["password"] == login_pass:
-                st.session_state.logged_in = True
-                users[login_email]["is_admin"] = False
-                st.session_state.current_user = users[login_email]
-                st.success("تم تسجيل الدخول بنجاح!")
-                st.rerun()
             else:
-                st.error("خطأ في البريد الإلكتروني/رقم الهاتف أو كلمة المرور.")
+                user = get_user_from_db(login_email)
+                if user and user.get("password") == login_pass:
+                    st.session_state.logged_in = True
+                    user["is_admin"] = False
+                    st.session_state.current_user = user
+                    st.success("تم تسجيل الدخول بنجاح!")
+                    st.rerun()
+                else:
+                    st.error("خطأ في البريد الإلكتروني/رقم الهاتف أو كلمة المرور، أو لم يتم ربط Supabase بشكل صحيح.")
 
     with tab2:
         if st.session_state.register_step == "form":
@@ -112,8 +146,8 @@ if not st.session_state.logged_in:
                     elif not privacy_policy:
                         st.error("يجب الموافقة على بنود الخصوصية لإتمام التسجيل.")
                     else:
-                        users = load_users()
-                        if email in users:
+                        existing_user = get_user_from_db(email)
+                        if existing_user:
                             st.error("هذا الحساب مسجل مسبقاً.")
                         else:
                             st.session_state.temp_user_data = {
@@ -137,18 +171,18 @@ if not st.session_state.logged_in:
             with col1:
                 if st.button("تأكيد وإتمام التسجيل"):
                     if entered_code == "1234":
-                        users = load_users()
                         user_data = st.session_state.temp_user_data
-                        email = user_data["email"]
-                        users[email] = user_data
-                        save_users(users)
+                        success = save_user_to_db(user_data)
                         
-                        st.session_state.logged_in = True
-                        user_data["is_admin"] = False
-                        st.session_state.current_user = user_data
-                        st.session_state.register_step = "form"
-                        st.success("✨ تم التحقق وتسجيل الحساب بنجاح!")
-                        st.rerun()
+                        if success:
+                            st.session_state.logged_in = True
+                            user_data["is_admin"] = False
+                            st.session_state.current_user = user_data
+                            st.session_state.register_step = "form"
+                            st.success("✨ تم التحقق وحفظ الحساب في قاعدة البيانات بنجاح!")
+                            st.rerun()
+                        else:
+                            st.error("حدث خطأ أثناء حفظ البيانات في Supabase. تأكد من صحة المفاتيح وجدول 'users'.")
                     else:
                         st.error("رمز التحقق غير صحيح. (رمز التجربة: 1234).")
             with col2:
@@ -156,7 +190,7 @@ if not st.session_state.logged_in:
                     st.session_state.register_step = "form"
                     st.rerun()
 
-    # توقيع المطور أسفل الشاشة كما طلبت
+    # توقيع المطور أسفل الشاشة
     st.markdown("<div class='developer-footer'>تطوير م/ أبومعاوية الشبيبي</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
@@ -174,15 +208,15 @@ else:
 
     if user.get("is_admin", False):
         st.title("🛡️ لوحة تحكم الآدمن - مكتبة المعهد الصحي")
-        st.write("إدارة المستخدمين والنظام محلياً:")
+        st.write("إدارة المستخدمين المسجلين عبر قاعدة بيانات Supabase السحابية:")
         
-        users = load_users()
-        st.subheader(f"📊 عدد المستخدمين المسجلين: {len(users)}")
-        if users:
-            for email, udata in users.items():
-                st.write(f"- **الاسم:** {udata.get('full_name')} | **البريد/الهاتف:** {email} | **التخصص:** {udata.get('specialization')}")
+        users_list = get_all_users()
+        st.subheader(f"📊 عدد المستخدمين المسجلين: {len(users_list)}")
+        if users_list:
+            for udata in users_list:
+                st.write(f"- **الاسم:** {udata.get('full_name')} | **البريد/الهاتف:** {udata.get('email')} | **التخصص:** {udata.get('specialization')}")
         else:
-            st.info("لا يوجد مستخدمون مسجلون حتى الآن.")
+            st.info("لا يوجد مستخدمون مسجلون في قاعدة البيانات حتى الآن أو أن المفاتيح بحاجة للمراجعة.")
             
         st.markdown("---")
         st.markdown("<div class='developer-footer'>تطوير م/ أبومعاوية الشبيبي</div>", unsafe_allow_html=True)
