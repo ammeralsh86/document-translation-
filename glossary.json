@@ -2,10 +2,6 @@
   "Technology": "تكنولوجيا / تقنية",
   "Biotechnology": "تقنية حيوية",
   "Biology": "علم الأحياء / البيولوجيا",
-  "Technology Integration": "تكامل تكنولوجي",
-  "Agriculture": "زراعة",
-  "Agrotechnology": "تكنولوجيا الزراعة / التقنية الزراعية",
-  "Medicine": "طب",
   "Cardiology": "أمراض القلب / طب القلب",
   "Neurology": "علم الأعصاب / طب الأعصاب",
   "Pharmacology": "علم الأدوية / الفارماكولوجيا",
@@ -14,7 +10,5 @@
   "Geology": "علم الجيولوجيا / علم طبقات الأرض",
   "Repository": "مستودع",
   "Formatting": "تنسيق",
-  "API Key": "مفتاح واجهة البرمجة",
   "Documentation": "توثيق"
 }
-
